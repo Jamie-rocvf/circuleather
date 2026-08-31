@@ -1,0 +1,8 @@
+#! 0-docker-compose-sql-php-namespace.yaml
+# Generated code, do not edit
+apiVersion: v1
+kind: Namespace
+metadata:
+    name: docker-compose-sql-php
+    labels:
+        com.docker.compose.project: docker-compose-sql-php

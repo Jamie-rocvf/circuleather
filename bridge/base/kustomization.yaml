@@ -1,0 +1,21 @@
+#! kustomization.yaml
+# Generated code, do not edit
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+    - 0-docker-compose-sql-php-namespace.yaml
+    - default-network-policy.yaml
+    - mysql-C:\Users\jamie\Documents\GitHub\docker-compose-sql-php\init.sql-persistentVolumeClaim.yaml
+    - mysql-certs-persistentVolumeClaim.yaml
+    - mysql-deployment.yaml
+    - mysql-expose.yaml
+    - mysql-mysqlconf-persistentVolumeClaim.yaml
+    - mysql-service.yaml
+    - php-C:\Users\jamie\Documents\GitHub\docker-compose-sql-php\php.ini-persistentVolumeClaim.yaml
+    - php-C:\Users\jamie\Documents\GitHub\docker-compose-sql-php\src-persistentVolumeClaim.yaml
+    - php-deployment.yaml
+    - php-expose.yaml
+    - php-service.yaml
+    - phpmyadmin-deployment.yaml
+    - phpmyadmin-expose.yaml
+    - phpmyadmin-service.yaml

@@ -1,0 +1,9 @@
+#! php-C:\Users\jamie\Documents\GitHub\docker-compose-sql-php\src-persistentVolumeClaim.yaml
+# Generated code, do not edit
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+    name: php-c--users-jamie-documents-github-docker-compose-sql-php-src
+    namespace: docker-compose-sql-php
+spec:
+    storageClassName: "hostpath" # see docker/desktop-storage-provisioner

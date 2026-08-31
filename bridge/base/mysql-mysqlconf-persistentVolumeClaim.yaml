@@ -1,0 +1,18 @@
+#! mysql-mysqlconf-persistentVolumeClaim.yaml
+# Generated code, do not edit
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+    name: mysql-mysqlconf
+    namespace: docker-compose-sql-php
+    labels:
+        com.docker.compose.service: mysql
+        com.docker.compose.volume: mysqlconf
+spec:
+    accessModes:
+        # TODO would need to check which services use this volume
+        - ReadWriteOnce
+    volumeMode: Filesystem
+    resources:
+        requests:
+            storage: 100Mi

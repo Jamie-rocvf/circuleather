@@ -1,0 +1,21 @@
+#! php-service.yaml
+# Generated code, do not edit
+apiVersion: v1
+kind: Service
+metadata:
+    name: php-published
+    namespace: docker-compose-sql-php
+    labels:
+        com.docker.compose.project: docker-compose-sql-php
+        com.docker.compose.service: php
+spec:
+    selector:
+        com.docker.compose.project: docker-compose-sql-php
+        com.docker.compose.service: php
+    ports:
+        - name: php-80
+          port: 80
+          protocol: TCP
+          targetPort: php-80
+
+# check if there is at least one published port

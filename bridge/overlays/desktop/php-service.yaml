@@ -1,0 +1,11 @@
+#! php-service.yaml
+# Generated code, do not edit
+apiVersion: v1
+kind: Service
+metadata:
+    name: php-published
+    namespace: docker-compose-sql-php
+spec:
+    type: LoadBalancer
+
+# check if there is at least one published port

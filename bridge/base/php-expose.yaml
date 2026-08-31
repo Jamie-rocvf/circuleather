@@ -1,0 +1,18 @@
+#! php-expose.yaml
+# Generated code, do not edit
+apiVersion: v1
+kind: Service
+metadata:
+    name: php
+    namespace: docker-compose-sql-php
+    labels:
+        com.docker.compose.project: docker-compose-sql-php
+        com.docker.compose.service: php
+spec:
+    selector:
+        com.docker.compose.project: docker-compose-sql-php
+        com.docker.compose.service: php
+    ports:
+        - name: php-80
+          port: 80
+          targetPort: php-80

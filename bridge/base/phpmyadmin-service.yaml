@@ -1,0 +1,19 @@
+#! phpmyadmin-service.yaml
+# Generated code, do not edit
+apiVersion: v1
+kind: Service
+metadata:
+    name: phpmyadmin-published
+    namespace: docker-compose-sql-php
+    labels:
+        com.docker.compose.project: docker-compose-sql-php
+        com.docker.compose.service: phpmyadmin
+spec:
+    selector:
+        com.docker.compose.project: docker-compose-sql-php
+        com.docker.compose.service: phpmyadmin
+    ports:
+        - name: phpmyadmin-8080
+          port: 8080
+          protocol: TCP
+          targetPort: phpmyadmin-80

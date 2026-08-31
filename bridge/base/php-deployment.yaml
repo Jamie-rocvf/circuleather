@@ -1,0 +1,44 @@
+#! php-deployment.yaml
+# Generated code, do not edit
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+    name: php
+    namespace: docker-compose-sql-php
+    labels:
+        com.docker.compose.project: docker-compose-sql-php
+        com.docker.compose.service: php
+spec:
+    replicas: 1
+    selector:
+        matchLabels:
+            com.docker.compose.project: docker-compose-sql-php
+            com.docker.compose.service: php
+    strategy:
+        type: Recreate
+    template:
+        metadata:
+            labels:
+                com.docker.compose.project: docker-compose-sql-php
+                com.docker.compose.service: php
+                com.docker.compose.network.default: "true"
+        spec:
+            containers:
+                - name: php
+                  image: docker-compose-sql-php-php
+                  imagePullPolicy: IfNotPresent
+                  ports:
+                    - name: php-80
+                      containerPort: 80
+                  volumeMounts:
+                    - name: var-www-html
+                      mountPath: /var/www/html
+                    - name: usr-local-etc-php-php-ini
+                      mountPath: /usr/local/etc/php/php.ini
+            volumes:
+                - name: var-www-html
+                  hostPath:
+                    path: C:\Users\jamie\Documents\GitHub\docker-compose-sql-php\src
+                - name: usr-local-etc-php-php-ini
+                  hostPath:
+                    path: C:\Users\jamie\Documents\GitHub\docker-compose-sql-php\php.ini

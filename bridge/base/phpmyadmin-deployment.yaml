@@ -1,0 +1,35 @@
+#! phpmyadmin-deployment.yaml
+# Generated code, do not edit
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+    name: phpmyadmin
+    namespace: docker-compose-sql-php
+    labels:
+        com.docker.compose.project: docker-compose-sql-php
+        com.docker.compose.service: phpmyadmin
+spec:
+    replicas: 1
+    selector:
+        matchLabels:
+            com.docker.compose.project: docker-compose-sql-php
+            com.docker.compose.service: phpmyadmin
+    strategy:
+        type: Recreate
+    template:
+        metadata:
+            labels:
+                com.docker.compose.project: docker-compose-sql-php
+                com.docker.compose.service: phpmyadmin
+                com.docker.compose.network.default: "true"
+        spec:
+            containers:
+                - name: phpmyadmin
+                  image: phpmyadmin
+                  imagePullPolicy: IfNotPresent
+                  env:
+                    - name: PMA_HOST
+                      value: "mysql"
+                  ports:
+                    - name: phpmyadmin-80
+                      containerPort: 80

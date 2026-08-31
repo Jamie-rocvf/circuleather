@@ -1,0 +1,15 @@
+#! kustomization.yaml
+# Generated code, do not edit
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+    - ../../base
+patches:
+    - path: mysql-C:\Users\jamie\Documents\GitHub\docker-compose-sql-php\init.sql-persistentVolumeClaim.yaml
+    - path: mysql-certs-persistentVolumeClaim.yaml
+    - path: mysql-mysqlconf-persistentVolumeClaim.yaml
+    - path: mysql-service.yaml
+    - path: php-C:\Users\jamie\Documents\GitHub\docker-compose-sql-php\php.ini-persistentVolumeClaim.yaml
+    - path: php-C:\Users\jamie\Documents\GitHub\docker-compose-sql-php\src-persistentVolumeClaim.yaml
+    - path: php-service.yaml
+    - path: phpmyadmin-service.yaml

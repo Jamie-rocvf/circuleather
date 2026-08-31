@@ -1,0 +1,23 @@
+# check if there is at least one published port
+
+#! mysql-service.yaml
+# Generated code, do not edit
+apiVersion: v1
+kind: Service
+metadata:
+    name: mysql-published
+    namespace: docker-compose-sql-php
+    labels:
+        com.docker.compose.project: docker-compose-sql-php
+        com.docker.compose.service: mysql
+spec:
+    selector:
+        com.docker.compose.project: docker-compose-sql-php
+        com.docker.compose.service: mysql
+    ports:
+        - name: mysql-3306
+          port: 3306
+          protocol: TCP
+          targetPort: mysql-3306
+
+# check if there is at least one published port
