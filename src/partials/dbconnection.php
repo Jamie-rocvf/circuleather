@@ -4,7 +4,7 @@ $username = "root";
 $password = "password";
 
 try {
-    $conn = new mysqli($servername, $username, $password, "loginpage");
+    $conn = new mysqli($servername, $username, $password, "circuleather");
     if ($conn->connect_error) {
         error_log($conn->connect_error);
         exit($conn->connect_error);

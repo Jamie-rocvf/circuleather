@@ -1,0 +1,157 @@
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: Arial, sans-serif;
+}
+
+body {
+    background-image: url('png/background.jpg');
+    background-size: cover;
+    background-position: flex;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+/* Header Styling */
+.header {
+    background-image: url('png/leer header.jpg');
+    background-size: fill;
+    background-position: fixed;
+    border-bottom: 3px solid #000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    padding: 15px 20px;
+    max-height: 10%;
+}
+
+.logo {
+    position: absolute;
+    left: 20px;
+    border: 3px solid #000;
+    padding: 10px 20px;
+    background-color: #a67c52;
+    font-weight: bold;
+}
+
+.titel {
+    border: 3px solid #000;
+    padding: 10px 80px;
+    background-color: #a67c52;
+    font-size: 2rem;
+    font-weight: bold;
+}
+
+/* Main Layout (Sidebar + Content) */
+.main-container {
+    display: flex;
+    flex: 1;
+}
+
+/* Sidebar Styling */
+.sidebar {
+    width: 220px;
+    background-image: url('png/hout.jpg');
+    background-size: fill;
+    background-position: center;
+    background-repeat: repeat;
+    border-right: 3px solid #000;
+    padding: 20px 15px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.zoekbalk input {
+    width: 100%;
+    border: 3px solid #000;
+    padding: 8px;
+    background-color: #a67c52;
+    font-size: 1rem;
+    outline: none;
+}
+
+.filter-opties {
+    border: 3px solid #000;
+    height: 350px;
+    padding: 10px;
+    background-color: #a67c52;
+    font-size: 1.1rem;
+}
+
+/* Content & Grid Styling */
+.content {
+    flex: 1;
+    padding: 30px;
+}
+
+.product-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(20%, 1fr));
+    gap: 20px;
+}
+
+@media (max-width: 1000px) {
+    .product-grid {
+        grid-template-columns: repeat(auto-fit, minmax(35%, 1fr));
+    }
+}
+
+@media (max-width: 600px) {
+    .product-grid {
+        grid-template-columns: repeat(auto-fit, minmax(50%, 1fr));
+    }
+}
+
+@media (max-width: 400px) {
+    .product-grid {
+        grid-template-columns: repeat(auto-fit, minmax(100%, 1fr));
+    }
+}
+
+.product-card {
+    border: 3px solid #000;
+    background-color: #a67c52;
+    opacity: 0.7;
+    aspect-ratio: 5 / 3;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 15px;
+    gap: 8px;
+}
+
+/* Specifieke elementen binnen de productkaarten */
+.product-label {
+    font-size: 1.4rem;
+}
+
+.foto-box {
+    border: 3px solid #000;
+    width: 80%;
+    height: 60%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+}
+
+.naam-box {
+    border: 2px solid #000;
+    width: 90%;
+    text-align: center;
+    padding: 2px 0;
+    font-size: 0.85rem;
+}
+
+.hoeveelheid-box {
+    border: 2px solid #000;
+    width: 50%;
+    text-align: center;
+    padding: 1px 0;
+    font-size: 0.75rem;
+}
