@@ -52,7 +52,7 @@ body {
     height: 13%;
     flex-shrink: 0;
     background-image: url('png/leer header.jpg');
-    background-size: cover;
+    background-size: fill;
     background-position: center;
     border-bottom: 4px solid var(--leer-donker);
     display: flex;
@@ -83,7 +83,7 @@ body {
 
 .logo img,
 .titel img {
-    height: 60%;
+    height: 80%;
     width: auto;
 }
 
@@ -98,24 +98,22 @@ body {
 /* Sidebar Styling */
 .sidebar {
     width: 18%;
-    flex-shrink: 0;
-    min-height: 0;
+    min-height: 100%;
     overflow: hidden;
     background-image: url('png/hout.jpg');
-    background-size: cover;
+    background-size: fill;
+    background-repeat: repeat;
     background-position: center;
     border-right: 3px solid var(--leer-donker);
     display: flex;
     flex-direction: column;
     padding: 3%;
     gap: 2%;
-    box-shadow: 2px 0 6px rgba(0, 0, 0, 0.2);
 }
 
 .zoekbalk input {
     width: 100%;
     border: 2px solid var(--leer-donker);
-    border-radius: 8%;
     padding: 4% 6%;
     background-color: var(--leer-licht);
     font-size: 0.95rem;
@@ -130,22 +128,10 @@ body {
 .filter-opties {
     flex: 1;
     border: 2px solid var(--leer-donker);
-    border-radius: 4%;
     padding: 5%;
     background-color: rgba(245, 234, 217, 0.92);
     font-size: 1rem;
     font-weight: 600;
-}
-
-.recycle-icon {
-    margin-top: auto;
-    padding: 5%;
-}
-
-.recycle-icon img {
-    width: 100%;
-    border-radius: 8%;
-    display: block;
 }
 
 .pagination {
@@ -205,10 +191,20 @@ body {
     grid-template-rows: repeat(3, minmax(0, 1fr));
     gap: 3%;
 }
+@media (max-width: 1000px) {
+    .product-grid {
+        grid-template-columns: repeat(auto-fit, minmax(35%, 1fr));
+    }
+}
+
+@media (max-width: 600px) {
+    .product-grid {
+        grid-template-columns: repeat(auto-fit, minmax(50%, 1fr));
+    }
+}
 
 .product-card {
     border: 2px solid var(--leer-donker);
-    border-radius: 8%;
     background-color: var(--leer-licht);
     display: flex;
     flex-direction: column;
@@ -229,7 +225,6 @@ body {
 /* Specifieke elementen binnen de productkaarten */
 .foto-box {
     border: 2px solid #d8c3a5;
-    border-radius: 8%;
     width: 100%;
     flex: 1;
     min-height: 0;
@@ -260,7 +255,6 @@ body {
 .hoeveelheid-box {
     flex-shrink: 0;
     border: 1px solid var(--leer-midden);
-    border-radius: 50%;
     padding: 2% 8%;
     font-size: 0.8rem;
     color: #6b4b2a;
@@ -283,9 +277,11 @@ body {
             </div>
             <div class="filter-opties">
                 <p>Filter opties</p>
-            </div>
-            <div class="recycle-icon">
-                <img src="png/recycle.png" alt="recycle">
+                <select>
+                    <option>Value 1</option> 
+                    <option>Value 2</option>
+                    <option>Value 3</option>
+                </select>
             </div>
             <nav class="pagination">
                 <a class="page-btn<?php echo $huidigePagina <= 1 ? ' disabled' : ''; ?>" href="?pagina=<?php echo max(1, $huidigePagina - 1); ?>">&laquo;</a>
