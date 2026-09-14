@@ -1,13 +1,96 @@
 <?php
-$producten = array_fill(0, 12, [
-    'naam' => 'naam',
-    'hoeveelheid' => 'hoeveelheid',
-    'afbeelding' => 'png/placeholder.jpeg'
-]);
+$conn = require_once "partials/dbconnection.php";
 
-// Paginering (placeholder: $totaalPaginas komt straks uit een COUNT-query, $huidigePagina stuurt de LIMIT/OFFSET)
+// Filters (waardes komen automatisch uit de database)
+$geselecteerdLeertype = trim($_GET['leertype'] ?? '');
+$geselecteerdKleur = trim($_GET['kleur'] ?? '');
+$geselecteerdDikte = trim($_GET['dikte'] ?? '');
+$geselecteerdMaat = trim($_GET['maat'] ?? '');
+
+$leertypesStmt = $conn->prepare("SELECT DISTINCT leertype FROM voorraad ORDER BY leertype");
+$leertypesStmt->execute();
+$leertypes = $leertypesStmt->get_result()->fetch_all(MYSQLI_ASSOC);
+$leertypesStmt->close();
+
+$kleurenStmt = $conn->prepare("SELECT DISTINCT kleur FROM voorraad ORDER BY kleur");
+$kleurenStmt->execute();
+$kleuren = $kleurenStmt->get_result()->fetch_all(MYSQLI_ASSOC);
+$kleurenStmt->close();
+
+$diktesStmt = $conn->prepare("SELECT DISTINCT dikteMM FROM voorraad ORDER BY dikteMM");
+$diktesStmt->execute();
+$diktes = $diktesStmt->get_result()->fetch_all(MYSQLI_ASSOC);
+$diktesStmt->close();
+
+$matenStmt = $conn->prepare("SELECT DISTINCT maatCMXCM FROM voorraad ORDER BY maatCMXCM");
+$matenStmt->execute();
+$maten = $matenStmt->get_result()->fetch_all(MYSQLI_ASSOC);
+$matenStmt->close();
+
+$where = [];
+$params = [];
+$types = '';
+
+if ($geselecteerdLeertype !== '') {
+    $where[] = 'leertype = ?';
+    $params[] = $geselecteerdLeertype;
+    $types .= 's';
+}
+if ($geselecteerdKleur !== '') {
+    $where[] = 'kleur = ?';
+    $params[] = $geselecteerdKleur;
+    $types .= 's';
+}
+if ($geselecteerdDikte !== '') {
+    $where[] = 'dikteMM = ?';
+    $params[] = $geselecteerdDikte;
+    $types .= 's';
+}
+if ($geselecteerdMaat !== '') {
+    $where[] = 'maatCMXCM = ?';
+    $params[] = $geselecteerdMaat;
+    $types .= 's';
+}
+$whereSql = $where ? ' WHERE ' . implode(' AND ', $where) : '';
+
+// filterQuery zorgt dat de paginering-links de actieve filters onthouden
+$filterQuery = '';
+if ($geselecteerdLeertype !== '') {
+    $filterQuery .= '&leertype=' . urlencode($geselecteerdLeertype);
+}
+if ($geselecteerdKleur !== '') {
+    $filterQuery .= '&kleur=' . urlencode($geselecteerdKleur);
+}
+if ($geselecteerdDikte !== '') {
+    $filterQuery .= '&dikte=' . urlencode($geselecteerdDikte);
+}
+if ($geselecteerdMaat !== '') {
+    $filterQuery .= '&maat=' . urlencode($geselecteerdMaat);
+}
+
+// Paginering
+$itemsPerPagina = 12;
 $huidigePagina = isset($_GET['pagina']) ? max(1, (int) $_GET['pagina']) : 1;
-$totaalPaginas = 3;
+$offset = ($huidigePagina - 1) * $itemsPerPagina;
+
+$totaalStmt = $conn->prepare("SELECT COUNT(*) AS totaal FROM voorraad" . $whereSql);
+if ($params) {
+    $totaalStmt->bind_param($types, ...$params);
+}
+$totaalStmt->execute();
+$totaalRij = $totaalStmt->get_result()->fetch_assoc();
+$totaalPaginas = max(1, (int) ceil($totaalRij['totaal'] / $itemsPerPagina));
+$totaalStmt->close();
+
+$selectParams = $params;
+$selectParams[] = $itemsPerPagina;
+$selectParams[] = $offset;
+
+$stmt = $conn->prepare("SELECT id, leertype, dikteMM, maatCMXCM, gewichtG, kleur, prijs FROM voorraad" . $whereSql . " LIMIT ? OFFSET ?");
+$stmt->bind_param($types . "ii", ...$selectParams);
+$stmt->execute();
+$producten = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+$stmt->close();
 ?>
 <!DOCTYPE html>
 <html lang="nl">
@@ -57,7 +140,7 @@ body {
     border-bottom: 4px solid var(--leer-donker);
     display: flex;
     align-items: center;
-    justify-content: center;
+    justify-content: space-between;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
 }
 
@@ -111,27 +194,41 @@ body {
     gap: 2%;
 }
 
-.zoekbalk input {
-    width: 100%;
-    border: 2px solid var(--leer-donker);
-    padding: 4% 6%;
-    background-color: var(--leer-licht);
-    font-size: 0.95rem;
-    outline: none;
-    transition: box-shadow 0.2s ease;
-}
-
-.zoekbalk input:focus {
-    box-shadow: 0 0 0 3px rgba(166, 124, 82, 0.5);
-}
-
 .filter-opties {
     flex: 1;
+    display: flex;
+    flex-direction: column;
     border: 2px solid var(--leer-donker);
-    padding: 5%;
+    padding: 7%;
     background-color: rgba(245, 234, 217, 0.92);
     font-size: 1rem;
     font-weight: 600;
+}
+
+.filter-opties p {
+    flex-shrink: 0;
+    margin-bottom: 4%;
+}
+
+.filter-selects {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.filter-select {
+    width: 100%;
+    padding: 3% 4%;
+    border: 2px solid var(--leer-donker);
+    background-color: var(--leer-licht);
+    font-size: 0.9rem;
+    font-weight: 400;
+    color: var(--leer-donker);
+}
+
+.filter-select:last-child {
+    margin-bottom: 50%;
 }
 
 .pagination {
@@ -223,24 +320,6 @@ body {
 }
 
 /* Specifieke elementen binnen de productkaarten */
-.foto-box {
-    border: 2px solid #d8c3a5;
-    width: 100%;
-    flex: 1;
-    min-height: 0;
-    background-color: #fff;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    overflow: hidden;
-}
-
-.foto-box img {
-    max-width: 70%;
-    max-height: 100%;
-    object-fit: contain;
-}
-
 .naam-box {
     width: 100%;
     text-align: center;
@@ -250,15 +329,47 @@ body {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    text-transform: capitalize;
+    justify-content: space-between;
+    display: flex;
+    padding: 0 6%;
+}
+
+.naam-box span:first-child {
+    font-weight: 600;
+}
+
+.specs {
+    width: 100%;
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 4%;
+    overflow: hidden;
+}
+
+.spec-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.8rem;
+    padding: 0 6%;
+}
+
+.spec-row span:first-child {
+    color: var(--leer-midden);
+    font-weight: 600;
 }
 
 .hoeveelheid-box {
     flex-shrink: 0;
     border: 1px solid var(--leer-midden);
     padding: 2% 8%;
-    font-size: 0.8rem;
-    color: #6b4b2a;
-    background-color: #fff;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #fff;
+    background-color: var(--leer-donker);
 }
 </style>
 </head>
@@ -267,45 +378,70 @@ body {
     <header class="header">
         <div class="logo"><img src="png/logo.png" alt="logo"></div>
         <div class="titel"><img src="png/titel.png" alt="titel"></div>
+        <div class="inNout">
+            <div class="insert"><button>insert</button></div>
+            <div class="orders"><button>orders</button></div>
+        </div>
     </header>
 
     <div class="main-container">
 
         <aside class="sidebar">
-            <div class="zoekbalk">
-                <input type="text" id="searchInput" placeholder="Zoeken...">
-            </div>
-            <div class="filter-opties">
+            <form class="filter-opties" method="get">
                 <p>Filter opties</p>
-                <select>
-                    <option>Value 1</option> 
-                    <option>Value 2</option>
-                    <option>Value 3</option>
+                <div class="filter-selects">
+                <select class="filter-select" name="leertype" onchange="this.form.submit()">
+                    <option value="">Alle leertypes</option>
+                    <?php foreach ($leertypes as $rij): ?>
+                        <option value="<?php echo htmlspecialchars($rij['leertype']); ?>"<?php echo $rij['leertype'] === $geselecteerdLeertype ? ' selected' : ''; ?>><?php echo htmlspecialchars($rij['leertype']); ?></option>
+                    <?php endforeach; ?>
                 </select>
-            </div>
+                <select class="filter-select" name="kleur" onchange="this.form.submit()">
+                    <option value="">Alle kleuren</option>
+                    <?php foreach ($kleuren as $rij): ?>
+                        <option value="<?php echo htmlspecialchars($rij['kleur']); ?>"<?php echo $rij['kleur'] === $geselecteerdKleur ? ' selected' : ''; ?>><?php echo htmlspecialchars($rij['kleur']); ?></option>
+                    <?php endforeach; ?>
+                </select>
+                <select class="filter-select" name="dikte" onchange="this.form.submit()">
+                    <option value="">Alle diktes</option>
+                    <?php foreach ($diktes as $rij): ?>
+                        <option value="<?php echo htmlspecialchars($rij['dikteMM']); ?>"<?php echo $rij['dikteMM'] == $geselecteerdDikte && $geselecteerdDikte !== '' ? ' selected' : ''; ?>><?php echo htmlspecialchars($rij['dikteMM']); ?> mm</option>
+                    <?php endforeach; ?>
+                </select>
+                <select class="filter-select" name="maat" onchange="this.form.submit()">
+                    <option value="">Alle maten</option>
+                    <?php foreach ($maten as $rij): ?>
+                        <option value="<?php echo htmlspecialchars($rij['maatCMXCM']); ?>"<?php echo $rij['maatCMXCM'] == $geselecteerdMaat && $geselecteerdMaat !== '' ? ' selected' : ''; ?>><?php echo htmlspecialchars($rij['maatCMXCM']); ?> cm</option>
+                    <?php endforeach; ?>
+                </select>
+                </div>
+            </form>
             <nav class="pagination">
-                <a class="page-btn<?php echo $huidigePagina <= 1 ? ' disabled' : ''; ?>" href="?pagina=<?php echo max(1, $huidigePagina - 1); ?>">&laquo;</a>
+                <a class="page-btn<?php echo $huidigePagina <= 1 ? ' disabled' : ''; ?>" href="?pagina=<?php echo max(1, $huidigePagina - 1); ?><?php echo $filterQuery; ?>">&laquo;</a>
                 <?php for ($i = 1; $i <= $totaalPaginas; $i++): ?>
-                    <a class="page-btn<?php echo $i === $huidigePagina ? ' active' : ''; ?>" href="?pagina=<?php echo $i; ?>"><?php echo $i; ?></a>
+                    <a class="page-btn<?php echo $i === $huidigePagina ? ' active' : ''; ?>" href="?pagina=<?php echo $i; ?><?php echo $filterQuery; ?>"><?php echo $i; ?></a>
                 <?php endfor; ?>
-                <a class="page-btn<?php echo $huidigePagina >= $totaalPaginas ? ' disabled' : ''; ?>" href="?pagina=<?php echo min($totaalPaginas, $huidigePagina + 1); ?>">&raquo;</a>
+                <a class="page-btn<?php echo $huidigePagina >= $totaalPaginas ? ' disabled' : ''; ?>" href="?pagina=<?php echo min($totaalPaginas, $huidigePagina + 1); ?><?php echo $filterQuery; ?>">&raquo;</a>
             </nav>
         </aside>
 
         <main class="content">
             <div class="product-grid">
-                <?php foreach ($producten as $index => $product): ?>
+                <?php foreach ($producten as $product): ?>
                     <div class="product-card">
-                        <div class="foto-box"><img src="<?php echo htmlspecialchars($product['afbeelding']); ?>" alt="<?php echo htmlspecialchars($product['naam']); ?>"></div>
-                        <div class="naam-box"><?php echo htmlspecialchars($product['naam']); ?></div>
-                        <div class="hoeveelheid-box"><?php echo htmlspecialchars($product['hoeveelheid']); ?></div>
+                        <div class="naam-box"><span>leertype</span><span><?php echo htmlspecialchars($product['leertype']); ?></span></div>
+                        <div class="specs">
+                            <div class="spec-row"><span>Dikte</span><span><?php echo htmlspecialchars($product['dikteMM']); ?> mm</span></div>
+                            <div class="spec-row"><span>Maat</span><span><?php echo htmlspecialchars($product['maatCMXCM']); ?> cm</span></div>
+                            <div class="spec-row"><span>Gewicht</span><span><?php echo htmlspecialchars($product['gewichtG']); ?> g</span></div>
+                            <div class="spec-row"><span>Kleur</span><span><?php echo htmlspecialchars($product['kleur']); ?></span></div>
+                        </div>
+                        <div class="hoeveelheid-box">&euro;<?php echo htmlspecialchars(number_format((float) $product['prijs'], 2)); ?></div>
                     </div>
                 <?php endforeach; ?>
             </div>
         </main>
 
     </div>
-
-    <script src="script.js"></script>
 </body>
 </html>
