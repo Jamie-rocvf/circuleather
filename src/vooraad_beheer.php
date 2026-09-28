@@ -2,6 +2,32 @@
     require_once "partials/session_check.php";
     $conn = require_once "partials/dbconnection.php";
 
+    // Bestelmodus: alleen voor gebruikers met mag_orders die op "Nieuwe bestelling aanmaken"
+    // hebben geklikt (zie orders.php). De gekozen stukken staan in $_SESSION['mandje'].
+    $bestelModus = ($_SESSION['mag_orders'] ?? false) && ($_SESSION['bestel_modus'] ?? false);
+
+    if (isset($_GET['stop_bestelling'])) {
+        unset($_SESSION['bestel_modus'], $_SESSION['mandje']);
+        header("Location: vooraad_beheer.php");
+        exit();
+    }
+
+    // Vinkjes opslaan: stukken die op deze pagina stonden worden eerst uit het mandje gehaald,
+    // daarna komen de aangevinkte er weer in. Zo werkt ook het uitvinken, en blijft een
+    // selectie van andere pagina's/filters bewaard.
+    if ($bestelModus && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['actie'] ?? '') === 'selectie') {
+        $paginaIds = array_map('intval', (array) ($_POST['pagina_ids'] ?? []));
+        $gekozen = array_map('intval', (array) ($_POST['selectie'] ?? []));
+        $mandje = array_diff(array_map('intval', $_SESSION['mandje'] ?? []), $paginaIds);
+        $_SESSION['mandje'] = array_values(array_unique(array_merge($mandje, $gekozen)));
+
+        $queryString = $_SERVER['QUERY_STRING'] ?? '';
+        header("Location: vooraad_beheer.php" . ($queryString !== '' ? '?' . $queryString : ''));
+        exit();
+    }
+
+    $mandjeIds = $bestelModus ? array_map('intval', $_SESSION['mandje'] ?? []) : [];
+
     // Filters (waardes komen automatisch uit de database)
     $geselecteerdLeertype = trim($_GET['leertype'] ?? '');
     $geselecteerdKleur = trim($_GET['kleur'] ?? '');
@@ -178,6 +204,16 @@
             <div class="melding-banner">Ontvangst #<?php echo (int) $_GET['ontvangst']; ?> opgeslagen — <?php echo (int) ($_GET['aantal'] ?? 0); ?> stuk(s) toegevoegd aan de voorraad.</div>
         <?php endif; ?>
 
+        <?php if ($bestelModus): ?>
+            <div class="bestel-balk">
+                <span>Bestelling samenstellen &mdash; <?php echo count($mandjeIds); ?> stuk(s) geselecteerd. Filter en vink de gewenste stukken aan.</span>
+                <span class="bestel-balk-acties">
+                    <a class="bestel-knop" href="orders.php">Bestelling afronden</a>
+                    <a class="bestel-knop" href="vooraad_beheer.php?stop_bestelling=1">Annuleren</a>
+                </span>
+            </div>
+        <?php endif; ?>
+
         <div class="main-container">
 
             <aside class="sidebar">
@@ -225,9 +261,14 @@
             </aside>
 
             <main class="content">
+                <?php if ($bestelModus): ?>
+                <form class="selectie-form" method="post" action="">
+                    <input type="hidden" name="actie" value="selectie">
+                <?php endif; ?>
                 <div class="product-grid">
                     <?php foreach ($producten as $product): ?>
-                        <div class="product-card">
+                        <?php $inMandje = in_array((int) $product['id'], $mandjeIds, true); ?>
+                        <div class="product-card<?php echo $inMandje ? ' geselecteerd' : ''; ?>">
                             <div class="naam-box"><span>leertype</span><span><?php echo htmlspecialchars($product['leertype']); ?></span></div>
                             <div class="specs">
                                 <div class="spec-row"><span>Dikte</span><span><?php echo htmlspecialchars($product['dikteMM']); ?> mm</span></div>
@@ -235,10 +276,24 @@
                                 <div class="spec-row"><span>Gewicht</span><span><?php echo htmlspecialchars($product['gewichtG']); ?> g</span></div>
                                 <div class="spec-row"><span>Kleur</span><span><?php echo htmlspecialchars($product['kleur']); ?></span></div>
                             </div>
-                            <div class="hoeveelheid-box">&euro;<?php echo htmlspecialchars(number_format((float) $product['prijs'], 2)); ?></div>
+                            <?php if ($bestelModus): ?>
+                                <input type="hidden" name="pagina_ids[]" value="<?php echo (int) $product['id']; ?>">
+                                <div class="product-footer">
+                                    <label class="product-select">
+                                        <input type="checkbox" name="selectie[]" value="<?php echo (int) $product['id']; ?>"<?php echo $inMandje ? ' checked' : ''; ?> onchange="this.form.submit()">
+                                        Kies
+                                    </label>
+                                    <div class="hoeveelheid-box">&euro;<?php echo htmlspecialchars(number_format((float) $product['prijs'], 2)); ?></div>
+                                </div>
+                            <?php else: ?>
+                                <div class="hoeveelheid-box">&euro;<?php echo htmlspecialchars(number_format((float) $product['prijs'], 2)); ?></div>
+                            <?php endif; ?>
                         </div>
                     <?php endforeach; ?>
                 </div>
+                <?php if ($bestelModus): ?>
+                </form>
+                <?php endif; ?>
             </main>
 
         </div>

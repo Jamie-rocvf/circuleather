@@ -639,15 +639,16 @@ body.subpage-gecentreerd {
     color: var(--leer-donker);
 }
 
-/* Ontvangst-invoerformulier (insert.php) */
-.ontvangst-header {
+/* Formulier-header: gestapelde metadata-velden bovenaan een formulier
+   (herkomst/datum bij insert.php, locatie/email/datum bij orders.php) */
+.formulier-header {
     display: flex;
     flex-direction: column;
     gap: 1rem;
     margin-bottom: 1.5rem;
 }
 
-.ontvangst-header label {
+.formulier-header label {
     display: flex;
     flex-direction: column;
     font-size: 0.85rem;
@@ -655,7 +656,7 @@ body.subpage-gecentreerd {
     color: var(--leer-donker);
 }
 
-.ontvangst-header .form-input {
+.formulier-header .form-input {
     margin-top: 0.3rem;
 }
 
@@ -688,6 +689,26 @@ body.subpage-gecentreerd {
 
 .stuk-blok .form-input {
     margin-top: 0.25rem;
+}
+
+/* De stukken staan 2 naast elkaar (velden binnen elk blok blijven boven elkaar);
+   op smalle schermen 1 per rij zodat de velden niet te krap worden. */
+.stuk-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.stuk-grid .stuk-blok {
+    min-width: 0;
+    margin-bottom: 0;
+}
+
+@media (max-width: 600px) {
+    .stuk-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
 }
 
 /* Zorgt dat brede tabellen op smalle schermen horizontaal scrollen i.p.v.
@@ -761,6 +782,120 @@ table.order-items tfoot td {
     border-top: 2px solid var(--leer-donker);
 }
 
+/* Bestelmodus (vooraad_beheer.php): stukken aanvinken voor een nieuwe bestelling */
+.bestel-balk {
+    flex-shrink: 0;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem 1rem;
+    padding: 0.5rem 1rem;
+    background-color: var(--leer-donker);
+    color: #fff;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.bestel-balk-acties {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.bestel-knop {
+    padding: 0.3rem 0.8rem;
+    border: 1px solid #fff;
+    color: #fff;
+    text-decoration: none;
+    white-space: nowrap;
+    transition: background-color 0.15s ease;
+}
+
+.bestel-knop:hover {
+    background-color: var(--leer-midden);
+}
+
+/* display: contents zorgt dat het formulier de bestaande layout niet beinvloedt */
+.selectie-form {
+    display: contents;
+}
+
+.product-footer {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    flex-shrink: 0;
+}
+
+.product-select {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--leer-donker);
+    cursor: pointer;
+}
+
+.product-select input {
+    width: 1.3rem;
+    height: 1.3rem;
+    accent-color: var(--leer-donker);
+    cursor: pointer;
+}
+
+.product-card.geselecteerd {
+    outline: 3px solid var(--leer-midden);
+    outline-offset: -3px;
+    background-color: #efdcc0;
+}
+
+/* Bestelling afronden (orders.php) */
+.btn-link {
+    display: inline-block;
+    text-decoration: none;
+    text-align: center;
+}
+
+.form-acties {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.8rem 1.2rem;
+}
+
+.form-acties .terug-link {
+    margin-bottom: 0;
+}
+
+.mandje-lijst {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    margin-bottom: 0.8rem;
+}
+
+.mandje-lijst li {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 0.2rem 1rem;
+    padding: 0.5rem 0.7rem;
+    border: 1px solid var(--leer-midden);
+    background-color: rgba(255, 255, 255, 0.5);
+    font-size: 0.85rem;
+}
+
+.mandje-totaal {
+    margin-bottom: 1.2rem;
+    text-align: right;
+    font-weight: 700;
+    color: var(--leer-donker);
+}
+
 /* Mobile L (~425px breed): kaarten/padding compacter, tabellen blijven via
    .tabel-scroll altijd binnen het scherm i.p.v. overlappen. */
 @media (max-width: 425px) {
@@ -776,15 +911,6 @@ table.order-items tfoot td {
     .auth-kaart {
         width: 100%;
         padding: 1.5rem;
-    }
-
-    .ontvangst-header {
-        flex-direction: column;
-        gap: 0.75rem;
-    }
-
-    .ontvangst-header label {
-        min-width: 0;
     }
 
     table.order-items {

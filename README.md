@@ -1,171 +1,376 @@
-# Circuleather - Voorraad- & Bestelbehersysteem
+# Circuleather - Leather Inventory & Order Management System
 
-Een PHP-webapplicatie ontwikkeld voor **Circuleather** om de inkomende voorraad van leer te beheren, bestellingen in te zien en gebruikerstoegang te reguleren op basis van specifieke rollen (*uitpakken* en *inpakken*).
+Een PHP-gebaseerd inventarisatie- en bestellingssysteem voor leerproducten, gebouwd met Docker, MySQL en Apache.
 
----
+## 📋 Overzicht
 
-## 📋 Inhoudsopgave
-1. [Over het Project](#-over-het-project)
-2. [Systeemarchitectuur & Rollen](#-systeemarchitectuur--rollen)
-3. [Pagina- en Bestandsbeschrijvingen](#-pagina--en-bestandsbeschrijvingen)
-4. [Database Structuur](#-database-structuur)
-5. [Installatie & Vereisten](#-installatie--vereisten)
+Circuleather is een webapplicatie voor het beheer van leerinventaris en klantbestellingen. Het systeem ondersteunt twee gebruikersrollen:
+- **Uitpakken**: Invoeren van nieuwe leerontvangsten in het systeem
+- **Inpakken**: Beheren van klantbestellingen
 
----
-
-## 🍃 Over het Project
-
-Circuleather is een voorraadbeheersysteem dat speciaal is ontworpen om restpartijen of specifieke stukken leer efficiënt te registreren, te filteren en te verwerken. 
-
-### Belangrijkste functionaliteiten:
-* **Dynamische filtering:** Filter voorraad op leertype, kleur, dikte en specifieke maatcategorieën (A, B, C).
-* **Faceted Search / Dynamische tellingen:** De tellingen in de filters passen zich automatisch aan op basis van de reeds geselecteerde criteria.
-* **Geauthenticeerd beheer:** Rolgebaseerde toegang (RBAC) voor medewerkers.
-* **Batch-invoer van ontvangsten:** Voeg tot 5 stukken leer tegelijk toe gekoppeld aan één specifieke levering/ontvangst.
-* **Orderoverzicht:** Bekijk geplaatste bestellingen inclusief gedetailleerde items en totaalprijzen.
-
----
-
-## 🔑 Systeemarchitectuur & Rollen
-
-Het systeem maakt gebruik van PHP-sessies en rechten (`mag_insert` en `mag_orders`) om functionaliteiten af te schermen.
-
-| Rol (Klasse) | `mag_insert` | `mag_orders` | Toegang & Rechten |
-| :--- | :---: | :---: | :--- |
-| **Uitpakken** | `true` | `false` | Kan de voorraad bekijken en nieuwe ontvangsten van leer invoeren (`insert.php`). |
-| **Inpakken** | `false` | `true` | Kan de voorraad bekijken en openstaande/verwerkte bestellingen bekijken (`orders.php`). |
-
----
-
-## 📄 Pagina- en Bestandsbeschrijvingen
-
-### 1. `vooraad_beheer.php` (Hoofdpagina / Dashboard)
-Het centrale dashboard waar de actieve voorraad getoond wordt.
-* **Sessie & Beveiliging:** Vereist dat een gebruiker is ingelogd (via `partials/session_check.php`).
-* **Filtering & Pagina-indeling:**
-  * **Status-filter:** Toont alleen items waarbij de status **niet** `'besteld'` is.
-  * **Maatcategorieën:** 
-    * **A:** 23 tot 40 cm
-    * **B:** 40 tot 60 cm
-    * **C:** 60+ cm
-  * **Paginering:** Toont maximaal 12 items per pagina met automatische paginageneratie.
-* **Dynamische navigatie:** Toont alleen knoppen naar `insert.php` of `orders.php` als de ingelogde gebruiker hier de juiste rechten voor heeft.
-
----
-
-### 2. `insert.php` (Ontvangst Invoeren)
-Pagina voor de afdeling *Uitpakken* om nieuwe binnenkomende partijen leer te registreren.
-* **Toegangscontrole:** Alleen toegankelijk met `mag_insert = true`.
-* **Werking:**
-  1. Gebruiker vult de **Herkomst** (leverancier/bron) en **Datum** in.
-  2. Biedt de mogelijkheid om tot **5 stukken leer** in één keer in te voeren.
-  3. Lege rijen (zonder ingevuld leertype) worden automatisch genegeerd.
-* **Database Transactie:**
-  * Maakt eerst een record aan in de tabel `Ontvangst`.
-  * Voegt per ingevuld stuk een record toe aan de tabel `voorraad`.
-  * Koppelt het voorraad-item en de ontvangst in de koppeltabel `ontvangst_items` (inclusief gewicht en bruikbaarheidsscore).
-
----
-
-### 3. `orders.php` (Bestellingenoverzicht)
-Pagina voor de afdeling *Inpakken* om overzicht te houden over klantbestellingen.
-* **Toegangscontrole:** Alleen toegankelijk met `mag_orders = true`.
-* **Werking:**
-  * Haalt alle bestellingen op, gesorteerd op meest recente besteldatum.
-  * Haalt gekoppelde artikelen op uit `bestelling_items` en `voorraad`.
-  * **Opmerking:** Hier worden voorraaditems **wel** getoond als ze de status `'besteld'` hebben, om de bestellingsinhoud correct weer te geven.
-  * Berekent automatisch subtotalen per item en het eindtotaal per bestelling.
-
----
-
-### 4. `login.php` & `logout.php` (Authenticatie)
-* **`login.php`:**
-  * Verifieert de gebruikersnaam en het gehashte wachtwoord via `password_verify()`.
-  * Slaat bij succes de gebruikersgegevens en de specifieke rechten (`mag_insert`, `mag_orders`) op in de `$_SESSION`.
-  * Bevat afhandeling voor verlopen sessies (`?timeout=1`) en succesvolle registratie (`?geregistreerd=1`).
-* **`logout.php`:**
-  * Vernietigt de actieve PHP-sessie en stuurt de gebruiker direct terug naar de inlogpagina.
-
----
-
-### 5. `registreer.php` (Account Aanmaken)
-* Stelt nieuwe gebruikers in staat een account aan te maken.
-* Verplicht het kiezen van een rol (**Klasse**):
-  * **Uitpakken:** Kent automatisch `mag_insert = 1` en `mag_orders = 0` toe.
-  * **Inpakken:** Kent automatisch `mag_insert = 0` en `mag_orders = 1` toe.
-* Wachtwoorden worden veilig gehasht via `password_hash()` met het `PASSWORD_DEFAULT` algoritme.
-
----
-
-## 🗄️ Database Structuur
-
-Hieronder staat het relationele schema op basis van de SQL-queries in de code:
+## 🏗️ Projectstructuur
 
 ```
-+------------------+       +-----------------------+       +-------------------+
-|    gebruikers    |       |       Ontvangst       |       |     voorraad      |
-+------------------+       +-----------------------+       +-------------------+
-| id (PK)          |       | id (PK)               |       | id (PK)           |
-| username         |       | herkomst              |       | leertype          |
-| password         |       | datum                 |       | dikteMM           |
-| mag_insert (bool)|       +-----------+-----------+       | lengteCM          |
-| mag_orders (bool)|                   | 1                 | breedteCM         |
-+------------------+                   |                   | gewichtG          |
-                                       | N                 | kleur             |
-                           +-----------v-----------+       | prijs             |
-                           |    ontvangst_items    |       | status            |
-                           +-----------------------+       +---------+---------+
-                           | id (PK)               |                 | 1
-                           | ontvangst_id (FK)     |                 |
-                           | voorraad_id (FK)  <---+-----------------+
-                           | gewichtG              |                 | N
-                           | bruikbaarheid         |       +---------v---------+
-                           +-----------------------+       |  bestelling_items |
-                                                           +-------------------+
-                                                           | id (PK)           |
-+------------------+                                       | bestelling_id(FK) |<---+
-|   bestellingen   |                                       | voorraad_id (FK)  |    |
-+------------------+                                       | aantal            |    |
-| ID (PK)          |<--------------------------------------| prijs             |    |
-| locatie           | 1                                   +-------------------+    |
-| email            |                                                                |
-| status           |                                                                |
-| besteldatum      |                                                                |
-| verstuurdatum    |                                                                |
-+------------------+                                                                |
-        |                                                                           |
-        +---------------------------------------------------------------------------+
+circuleather/
+├── src/                          # PHP-broncode en front-end
+│   ├── partials/                # Herbruikbare PHP-modules
+│   │   ├── dbconnection.php      # Database-verbindingslogica
+│   │   └── session_check.php     # Sessie- en time-out-controle
+│   ├── css/
+│   │   ├── style.css             # Alle stijlen
+│   │   └── png/                  # Afbeeldingen (achtergronden, logo's)
+│   ├── png/                      # Applicatie-logo's en titels
+│   ├── login.php                 # Login-pagina
+│   ├── registreer.php            # Registratiepagina
+│   ├── logout.php                # Logout-functie
+│   ├── vooraad_beheer.php        # Hoofdpagina (inventarisoverzicht)
+│   ├── insert.php                # Ontvangstinvoer
+│   └── orders.php                # Bestellingenbeheer
+├── docker-compose.yml            # Docker-services (PHP, MySQL, phpMyAdmin)
+├── Dockerfile                    # PHP-containerimage
+├── php.ini                       # PHP-configuratie
+├── init.sql                      # Database-initialisatiescript
+├── circuleather-tables.sql       # Volledige databaseschema
+├── gebruikers_setup.sql          # Gebruikersinstellingsscript
+└── README.md                     # Deze file
 ```
 
----
+## 📁 Bestandsbeschrijvingen
 
-## 🛠️ Installatie & Vereisten
+### `src/partials/dbconnection.php`
+**Doel**: Centraliseert de MySQL/MariaDB-databaseverbinding.
 
-1. **Serververeisten:**
-   * Webserver (zoals Apache of Nginx)
-   * PHP 7.4 of hoger
-   * MySQL / MariaDB database
+```php
+// Maakt een MySQLi-verbinding met de database
+// Connectieparameters:
+// - Host: "mysql" (Docker-servicenaam)
+// - Gebruiker: "root"
+// - Wachtwoord: "password"
+// - Database: "circuleather"
+```
+**Functionaliteit**:
+- Bouwt de verbindingsstring
+- Vangt fouten op en logt deze
+- Retourneert het verbindingsobject ($conn)
 
-2. **Vereiste Hulpbestanden (Partials):**
-   Zorg ervoor dat de map `partials/` de volgende bestanden bevat:
-   * `partials/dbconnection.php`: Bevat de databaseverbinding (retourneert een MySQLi-object).
-   * `partials/session_check.php`: Start de sessie en controleert of `$_SESSION['ingelogd']` gezet is (stuur anders door naar `login.php`).
+### `src/partials/session_check.php`
+**Doel**: Waarborgt dat gebruikers ingelogd zijn en beheert sessiontime-outs.
 
-3. **Mappenstructuur:**
-   ```text
-   ├── css/
-   │   └── style.css
-   ├── png/
-   │   ├── logo.png
-   │   └── titel.png
-   ├── partials/
-   │   ├── dbconnection.php
-   │   └── session_check.php
-   ├── insert.php
-   ├── login.php
-   ├── logout.php
-   ├── orders.php
-   ├── registreer.php
-   ├── vooraad_beheer.php
-   └── README.md
+```php
+// Time-out-instelling: 54.000 seconden (90 minuten)
+// - Controleert of $_SESSION['ingelogd'] is ingesteld
+// - Stuurt door naar login.php als niet ingelogd
+// - Verbreekt de sessie na 90 minuten inactiviteit
+// - Werkt de 'last_activity' telkens bij
+```
+**Functionaliteit**:
+- Sessies worden automatisch beëindigd na 90 minuten inactiviteit
+- Voorkont ongeautoriseerde toegang
+
+### `src/login.php`
+**Doel**: Biedt verificatiefunctionaliteit met gebruikersnaam/wachtwoordformulier.
+
+**Logica**:
+1. Controleert of gebruiker al ingelogd is → doorsturen naar voorraad_beheer.php
+2. Als POST-verzoek met action='inloggen':
+   - Haalt gebruikersnaam en wachtwoord op
+   - Zoekt gebruiker in database (prepared statement)
+   - Verifieert wachtwoord met `password_verify()`
+   - Slaat machtigingen op in $_SESSION (mag_insert, mag_orders)
+3. Toont foutmeldingen of success-bericht
+
+**Sessievariabelen**:
+- `$_SESSION['ingelogd']`: true als succesvol ingelogd
+- `$_SESSION['username']`: ingelogde gebruiker
+- `$_SESSION['mag_insert']`: mag ontvangsten invoeren
+- `$_SESSION['mag_orders']`: mag bestellingen beheren
+
+### `src/registreer.php`
+**Doel**: Registratie van nieuwe gebruikersaccounts met rolkeuze.
+
+**Logica**:
+1. Haalt gebruikersnaam, wachtwoord en rol ("uitpakken"/"inpakken") op
+2. Valideert input (niet leeg, rol moet geldig zijn)
+3. Controleert dubbele gebruikersnamen
+4. Hashelt wachtwoord met `password_hash()`
+5. Wijst rechten toe op basis van gekozen rol:
+   - **uitpakken**: mag_insert = 1, mag_orders = 0
+   - **inpakken**: mag_insert = 0, mag_orders = 1
+6. Voegt gebruiker in de database in
+
+### `src/logout.php`
+**Doel**: Vernietigt de sessie en stuurt door naar login.php.
+
+```php
+session_start();
+session_destroy();           // Vernietigt alle sessiegegevens
+header("Location: login.php");
+exit();
+```
+
+### `src/vooraad_beheer.php`
+**Doel**: Hoofdpagina; toont inventaris met geavanceerde filtrering en paginering.
+
+**Kernfunctionaliteiten**:
+
+1. **Filterlogica** (4 filters; onafhankelijk werken):
+   - Leertype (bijv. "kalfsleer")
+   - Kleur (bijv. "bruin")
+   - Dikte (bijv. "2.5 mm")
+   - Maat (A: 23-40 cm, B: 40-60 cm, C: 60+ cm)
+   
+   Elk filter toont alleen beschikbare opties (telt tellingen opnieuw per filter).
+
+2. **Bestelmodusintegratie**:
+   - Als gebruiker mag_orders = true en start een bestelling → bestelModus activeren
+   - Toont checkbox per product
+   - Slaat geselecteerde product-ID's op in $_SESSION['mandje']
+
+3. **Paginering** (12 items per pagina):
+   - Toon max. 5 paginaknoppen tegelijk
+   - Gecentreerd rond huidige pagina
+
+4. **Databasequery's**:
+   - 5 voorbereid geparameriseerde query's (1 per filter + hoofd-query)
+   - Filtert altijd status != 'besteld' (alleen beschikbare items)
+
+5. **HTML-layout**:
+   - Header: logo, titel, actieknoppen (insert/orders), gebruikersinformatie
+   - Zijbalk: filters, paginering
+   - Inhoud: productgrid (kaarten met specs en prijs)
+   - Bestelbalk: toont aantal geselecteerde items (als in bestelmode)
+
+### `src/insert.php`
+**Doel**: Invoer van nieuwe leerontvangsten in inventaris.
+
+**Werkstroom**:
+1. Controleert mag_insert-machtiging
+2. Haalt formuliergegevens op: herkomst (tekst), datum, tot 6 stukken
+3. Per stuk: leertype, dikte, lengte, breedte, kleur, prijs, gewicht, bruikbaarheid
+
+**Databaselogica**:
+1. Voeg Ontvangst-record in (herkomst, datum)
+2. Voor elk stuk:
+   - Voeg voorraad-record in (leertype, afmetingen, kleur, prijs)
+   - Voeg ontvangst_items-record in (link tussen Ontvangst en voorraad)
+3. Na succes: doorsturen naar vooraad_beheer.php met succesbericht
+
+**Validatie**:
+- Herkomst verplicht
+- Minstens 1 stuk met leertype vereist
+
+**JavaScript**:
+- Button "+ Stuk toevoegen" klont het laatste stuk-blok
+- Nummering werkt mee (Stuk 1, Stuk 2, enz.)
+
+### `src/orders.php`
+**Doel**: Beheer bestellingen; samenstellen en opslaan.
+
+**Twee modes**:
+
+1. **Normale modus** (bestelModus = false):
+   - Toont historische bestellingen in tabelvorm
+   - Button "+ Nieuwe bestelling aanmaken" activeert bestelModus
+
+2. **Bestelmode** (bestelModus = true):
+   - Gebruiker is op vooraad_beheer.php en selecteert producten
+   - Voigt hier in: locatie (bijv. adres), email, besteldatum
+   - Valideert:
+     - Locatie en email verplicht
+     - Minstens 1 product geselecteerd
+     - Alle products nog beschikbaar (server-side hecheck)
+   - **Transactie**:
+     - Selecteer producten met lock (FOR UPDATE)
+     - Als beschikbaarheid gewijzigd → rollback, error tonen
+     - Anders: maak Bestelling-record, voeg bestelling_items in, update status naar 'besteld'
+
+**Bestellingen-overzicht**:
+- Toont alle bestellingen (nieuwste eerst)
+- Per bestelling: details (locatie, email, datums), status, tabel met producten
+- Totaalbedrag berekend uit sum(aantal × prijs)
+
+**Sessie**:
+- `$_SESSION['bestel_modus']`: Geeft aan of in bestelmode
+- `$_SESSION['mandje']`: Array van product-ID's
+
+## 🗄️ Databaseschema
+
+### Tabellen:
+
+**gebruikers**
+```
+id (INT, PK)
+username (VARCHAR)
+password (VARCHAR, gehashed)
+mag_insert (TINYINT) - Mag ontvangsten invoeren
+mag_orders (TINYINT) - Mag bestellingen beheren
+```
+
+**voorraad**
+```
+id (INT, PK, AUTO_INCREMENT)
+leertype (VARCHAR)
+dikteMM (INT)
+lengteCM (INT)
+breedteCM (INT)
+gewichtG (FLOAT)
+kleur (VARCHAR)
+prijs (DECIMAL)
+status (ENUM: 'beschikbaar', 'besteld')
+```
+
+**Ontvangst**
+```
+id (INT, PK, AUTO_INCREMENT)
+herkomst (VARCHAR)
+datum (DATE)
+```
+
+**ontvangst_items**
+```
+id (INT, PK)
+ontvangst_id (INT, FK → Ontvangst.id)
+voorraad_id (INT, FK → voorraad.id)
+gewichtG (FLOAT)
+bruikbaarheid (FLOAT)
+```
+
+**bestellingen**
+```
+ID (INT, PK, AUTO_INCREMENT)
+locatie (VARCHAR)
+email (VARCHAR)
+status (VARCHAR: 'in behandeling', etc.)
+besteldatum (DATE)
+verstuurdatum (DATE, nullable)
+```
+
+**bestelling_items**
+```
+id (INT, PK)
+bestelling_id (INT, FK → bestellingen.ID)
+voorraad_id (INT, FK → voorraad.id)
+aantal (INT, default 1)
+prijs (DECIMAL)
+```
+
+## 🚀 Installatie & Setup
+
+### Vereisten
+- Docker & Docker Compose
+- Terminal/CLI
+
+### Stappen
+
+1. **Repository clonen**:
+   ```bash
+   git clone <repo-url>
+   cd circuleather
    ```
+
+2. **Docker-containers starten**:
+   ```bash
+   docker-compose up -d
+   ```
+
+3. **Database initialiseren** (gebeurt automatisch via `init.sql`):
+   - PHP-container: `http://localhost`
+   - phpMyAdmin: `http://localhost:8080`
+
+4. **Eerste gebruiker aanmaken**:
+   - Ga naar `http://localhost/registreer.php`
+   - Vul gebruikersnaam en wachtwoord in
+   - Kies rol: "Uitpakken" (mag_insert) of "Inpakken" (mag_orders)
+
+5. **Inloggen**:
+   - Ga naar `http://localhost/login.php`
+   - Voer credentials in
+
+### Configuratie
+
+**`php.ini`**: PHP-instellingen
+- `session.gc_maxlifetime`: Bepaalt hoe lang sessiefuncties beschikbaar zijn (standaard 1440 seconden)
+
+**`docker-compose.yml`**: Services en volumekoppelingen
+- PHP container mappen `./src` naar `/var/www/html`
+- MySQL accepteert verbindingen op poort 3306
+- phpMyAdmin op poort 8080
+
+## 🔒 Beveiliging
+
+1. **Wachtwoordhashing**: Alle wachtwoorden worden gehashed met `password_hash()` (PASSWORD_DEFAULT)
+2. **SQL-Injection-preventie**: Alle database-queries gebruiken prepared statements met `bind_param()`
+3. **XSS-preventie**: Output wordt ge-escaped met `htmlspecialchars()`
+4. **Sessiebeheer**: 90-minuten time-out, 'last_activity' tracking
+5. **Transactioneel beheer**: Bestellingen gebruiken MySQL-transacties (begin_transaction, commit, rollback) en rij-locking (FOR UPDATE)
+
+## 💡 Workflow-voorbeelden
+
+### Scenario 1: Ontvangst invoeren (Rol: Uitpakken)
+
+1. Log in → Ga naar voorraad_beheer.php
+2. Klik "insert" → Ga naar insert.php
+3. Vul herkomst in (bijv. "Fabrikant A")
+4. Voeg 3 stukken leer toe (per stuk: type, maat, kleur, prijs)
+5. Klik "Ontvangst opslaan" → Opgeslagen in DB, teruggestuurd naar voorraad_beheer
+
+### Scenario 2: Bestelling maken (Rol: Inpakken)
+
+1. Log in → Ga naar voorraad_beheer.php
+2. Klik "orders" → Ga naar orders.php
+3. Klik "+ Nieuwe bestelling aanmaken" → Teruggestuurd naar voorraad_beheer **in bestelmode**
+4. Filter op gewenste leertype/kleur/maat
+5. Vink gewenste stukken aan → Opgeslagen in $_SESSION['mandje']
+6. Klik "Bestelling afronden" → Terug naar orders.php
+7. Vul locatie/email in, controleer totaalbedrag
+8. Klik "Bestelling opslaan" → Transactie uitvoerd, status → "besteld", mail verzonden (toekomstig)
+
+### Scenario 3: Filtering en paginering
+
+1. Ga naar voorraad_beheer.php
+2. Filter op "kalfsleer" en kleur "bruin" → Dropdown's onthouden filters
+3. Klik paginanummer 3 → URL behoud filters in query string
+4. Elk product toont leertype, dikte, maat, gewicht, kleur, prijs
+
+## 🛠️ Technische details
+
+### PHP-versie: 8.3
+### Database: MariaDB (latest)
+### Webserver: Apache met mod_php
+
+### Gebruikte PHP-functies
+
+| Functie | Doel |
+|---------|------|
+| `session_start()` | Sessie starten |
+| `password_hash()` | Wachtwoord hashen |
+| `password_verify()` | Wachtwoord verifiëren |
+| `htmlspecialchars()` | XSS-preventie |
+| `mysqli::prepare()` | Prepared statements |
+| `bind_param()` | Parametersbinding |
+| `execute()` | Query uitvoeren |
+| `header()` | Redirects |
+
+### Databasequery-patronen
+
+1. **Filtered SELECT met COUNT (filters)**:
+   ```sql
+   SELECT leertype, COUNT(*) FROM voorraad WHERE status != 'besteld' AND kleur = ? GROUP BY leertype
+   ```
+
+2. **Transactioneel INSERT (bestellingen)**:
+   ```sql
+   BEGIN;
+   SELECT id, prijs FROM voorraad WHERE id IN (...) AND status = 'beschikbaar' FOR UPDATE;
+   INSERT INTO bestellingen VALUES (...);
+   INSERT INTO bestelling_items VALUES (...);
+   COMMIT;
+   ```
+
+## 📝 Licentie
+
+Schoolproject (OOP PHP/MySQL cursus)
+
+## 🤝 Bijdragen
+
+Dit project maakt deel uit van een eduactief curriculum. Suggesties zijn welkom via pull requests.

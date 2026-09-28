@@ -9,7 +9,7 @@
     $conn = require_once "partials/dbconnection.php";
     $melding = '';
     $fout = '';
-    $aantalRijen = 5;
+    $aantalRijen = 6;
 
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $herkomst = trim($_POST['herkomst'] ?? '');
@@ -21,7 +21,8 @@
             // Lege rijen (geen leertype ingevuld) worden overgeslagen, dus je hoeft niet
             // alle 5 rijen te gebruiken om meerdere stukken aan 1 ontvangst toe te voegen.
             $rijen = [];
-            for ($i = 0; $i < $aantalRijen; $i++) {
+            $aantalPost = count($_POST['leertype'] ?? []);
+            for ($i = 0; $i < $aantalPost; $i++) {
                 $leertype = trim($_POST['leertype'][$i] ?? '');
                 if ($leertype === '') {
                     continue;
@@ -104,7 +105,7 @@
             <?php endif; ?>
 
             <form method="POST" action="">
-                <div class="ontvangst-header">
+                <div class="formulier-header">
                     <label>Herkomst
                         <input class="form-input" type="text" name="herkomst" required>
                     </label>
@@ -113,6 +114,7 @@
                     </label>
                 </div>
 
+                <div class="stuk-grid">
                 <?php for ($i = 0; $i < $aantalRijen; $i++): ?>
                     <div class="stuk-blok">
                         <h3>Stuk <?php echo $i + 1; ?></h3>
@@ -142,10 +144,26 @@
                         </label>
                     </div>
                 <?php endfor; ?>
+                </div>
 
+                <button class="btn-primary" type="button" id="stuk-toevoegen">+ Stuk toevoegen</button>
                 <button class="btn-primary" type="submit">Ontvangst opslaan</button>
             </form>
         </div>
     </div>
+
+    <script>
+        document.getElementById('stuk-toevoegen').addEventListener('click', function () {
+            var grid = document.querySelector('.stuk-grid');
+            var blokken = grid.querySelectorAll('.stuk-blok');
+            var kloon = blokken[blokken.length - 1].cloneNode(true);
+
+            kloon.querySelector('h3').textContent = 'Stuk ' + (blokken.length + 1);
+            kloon.querySelectorAll('input').forEach(function (input) { input.value = ''; });
+
+            grid.appendChild(kloon);
+            kloon.querySelector('input').focus();
+        });
+    </script>
 </body>
 </html>
