@@ -1,22 +1,26 @@
 <?php
-    session_start();
+    session_start(); // sessie starten
 
+    // Al ingelogd? Dan hoef je niet te registreren
     if (isset($_SESSION['ingelogd'])) {
         header("Location: vooraad_beheer.php");
         exit();
     }
 
+    // Databaseverbinding ophalen (bestand wordt maar 1 keer geladen)
     $conn = require_once "partials/dbconnection.php";
     $foutmelding = '';
 
     if ($_SERVER["REQUEST_METHOD"] === "POST" && ($_POST['action'] ?? '') === 'registreer') {
         $gebruiker = trim($_POST['username'] ?? '');
         $wachtwoord = $_POST['password'] ?? '';
-        $klasse = $_POST['klasse'] ?? '';
+        $klasse = $_POST['klasse'] ?? ''; // gekozen rol: uitpakken of inpakken
 
+        // in_array(): controleert of de gekozen klasse in de lijst met toegestane waardes staat
         if ($gebruiker === '' || $wachtwoord === '' || !in_array($klasse, ['uitpakken', 'inpakken'], true)) {
             $foutmelding = 'Vul een gebruikersnaam, wachtwoord en klasse in.';
         } else {
+            // Eerst checken of de gebruikersnaam al bestaat (prepared statement = veilig)
             $checkStmt = $conn->prepare("SELECT id FROM gebruikers WHERE username = ?");
             $checkStmt->bind_param("s", $gebruiker);
             $checkStmt->execute();
@@ -26,6 +30,7 @@
             if ($bestaatAl) {
                 $foutmelding = 'Deze gebruikersnaam bestaat al.';
             } else {
+                // password_hash(): maakt van het wachtwoord een veilige hash (nooit het echte wachtwoord opslaan)
                 $hash = password_hash($wachtwoord, PASSWORD_DEFAULT);
                 // Klasse bepaalt de rechten: "uitpakken" (ontvangst invoeren) geeft
                 // mag_insert, "inpakken" (bestellingen beheren) geeft mag_orders.
@@ -33,7 +38,8 @@
                 $magOrders = $klasse === 'inpakken' ? 1 : 0;
 
                 $stmt = $conn->prepare("INSERT INTO gebruikers (username, password, mag_insert, mag_orders) VALUES (?, ?, ?, ?)");
-                $stmt->bind_param("ssii", $gebruiker, $hash, $magInsert, $magOrders);
+                $stmt->bind_param("ssii", $gebruiker, $hash, $magInsert, $magOrders); // s = string, i = integer
+                // execute() geeft true terug als het opslaan is gelukt
                 if ($stmt->execute()) {
                     $stmt->close();
                     $conn->close();
@@ -54,7 +60,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Registreren - Circuleather</title>
-    <link rel="stylesheet" type="text/css" href="css/style.css">
+    <link rel="stylesheet" type="text/css" href="css/style.css?v=<?php echo filemtime(__DIR__ . '/css/style.css'); ?>">
 </head>
 <body class="subpage subpage-gecentreerd">
     <div class="pagina-kaart auth-kaart">

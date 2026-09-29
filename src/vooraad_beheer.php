@@ -1,4 +1,5 @@
 <?php
+    // Inlogcontrole + sessie, daarna de databaseverbinding ophalen
     require_once "partials/session_check.php";
     $conn = require_once "partials/dbconnection.php";
 
@@ -6,6 +7,7 @@
     // hebben geklikt (zie orders.php). De gekozen stukken staan in $_SESSION['mandje'].
     $bestelModus = ($_SESSION['mag_orders'] ?? false) && ($_SESSION['bestel_modus'] ?? false);
 
+    // Bestelmodus annuleren: mandje en modus uit de sessie verwijderen (unset)
     if (isset($_GET['stop_bestelling'])) {
         unset($_SESSION['bestel_modus'], $_SESSION['mandje']);
         header("Location: vooraad_beheer.php");
@@ -16,12 +18,14 @@
     // daarna komen de aangevinkte er weer in. Zo werkt ook het uitvinken, en blijft een
     // selectie van andere pagina's/filters bewaard.
     if ($bestelModus && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['actie'] ?? '') === 'selectie') {
+        // (array): zorgt dat de waarde een lijst is | array_map('intval'): alle waardes naar getallen
         $paginaIds = array_map('intval', (array) ($_POST['pagina_ids'] ?? []));
         $gekozen = array_map('intval', (array) ($_POST['selectie'] ?? []));
+        // array_diff(): haalt de stukken van deze pagina uit het mandje | array_merge(): voegt de aangevinkte weer toe
         $mandje = array_diff(array_map('intval', $_SESSION['mandje'] ?? []), $paginaIds);
         $_SESSION['mandje'] = array_values(array_unique(array_merge($mandje, $gekozen)));
 
-        $queryString = $_SERVER['QUERY_STRING'] ?? '';
+        $queryString = $_SERVER['QUERY_STRING'] ?? ''; // de huidige URL-parameters, zodat filters behouden blijven
         header("Location: vooraad_beheer.php" . ($queryString !== '' ? '?' . $queryString : ''));
         exit();
     }
@@ -29,6 +33,7 @@
     $mandjeIds = $bestelModus ? array_map('intval', $_SESSION['mandje'] ?? []) : [];
 
     // Filters (waardes komen automatisch uit de database)
+    // Gekozen filters uit de URL halen (trim haalt spaties weg)
     $geselecteerdLeertype = trim($_GET['leertype'] ?? '');
     $geselecteerdKleur = trim($_GET['kleur'] ?? '');
     $geselecteerdDikte = trim($_GET['dikte'] ?? '');
@@ -42,6 +47,7 @@
     ];
 
     // Herbruikbare CASE-expressie (prioriteit A -> B -> C, 1 van de 2 maten hoeft maar te passen)
+    // CASE WHEN: SQL-versie van if/else, deelt elk stuk in bij maat A, B of C
     $maatCaseSql = 'CASE';
     foreach ($maatCategorieen as $categorie => [$min, $max]) {
         if ($max === null) {
@@ -62,6 +68,29 @@
         ? ["$maatCaseSql = ?", [$geselecteerdMaat], 's']
         : null;
 
+    /**
+     * Bouwt een WHERE-clause (SQL) uit een lijst van filter-condities.
+     *
+     * Wat het doet: plakt alle actieve condities aan elkaar met "AND" ertussen,
+     * plus de vaste basisconditie status != 'besteld' die altijd geldt zodat
+     * besteld leer nooit in het overzicht verschijnt. Condities die null zijn
+     * (dus een niet-actief filter) worden overgeslagen.
+     *
+     * Hoe het werkt: elke conditie in $condities is zelf een array van 3 delen:
+     *   [0] => het stukje SQL, bijv. "leertype = ?"
+     *   [1] => de bijbehorende parameter(s) als array, bijv. ['koe']
+     *   [2] => het type voor bind_param, bijv. 's' (string) of 'i' (integer)
+     * Deze functie voegt ze allemaal samen tot 1 complete WHERE-clause plus de
+     * bijpassende $params en $types, klaar om direct in bind_param(...) te
+     * gebruiken. Wordt hergebruikt voor zowel de hoofd-query (alle filters) als
+     * elke los filter-dropdown (alle filters BEHALVE de eigen, voor de aantallen).
+     *
+     * @param array $condities Lijst van filter-condities; elk element is
+     *                         [sql, params, types] of null (niet actief).
+     * @return array [0] => WHERE-clause (string, inclusief het woord "WHERE"),
+     *               [1] => parameters (array, in de juiste volgorde),
+     *               [2] => types-string voor bind_param (bijv. "ssi")
+     */
     function bouwWhereClause(array $condities): array {
         $sqlDelen = ["status != 'besteld'"];
         $params = [];
@@ -77,6 +106,7 @@
             }
             $types .= $condTypes;
         }
+        // implode(): plakt de losse stukken aan elkaar met " AND " ertussen
         return [' WHERE ' . implode(' AND ', $sqlDelen), $params, $types];
     }
 
@@ -128,6 +158,7 @@
 
     // filterQuery zorgt dat de paginering-links de actieve filters onthouden
     $filterQuery = '';
+    // urlencode(): maakt tekst veilig voor gebruik in een URL
     if ($geselecteerdLeertype !== '') {
         $filterQuery .= '&leertype=' . urlencode($geselecteerdLeertype);
     }
@@ -143,8 +174,9 @@
 
     // Paginering
     $itemsPerPagina = 12;
+    // max(1, ...): het paginanummer is nooit lager dan 1
     $huidigePagina = isset($_GET['pagina']) ? max(1, (int) $_GET['pagina']) : 1;
-    $offset = ($huidigePagina - 1) * $itemsPerPagina;
+    $offset = ($huidigePagina - 1) * $itemsPerPagina; // OFFSET: hoeveel rijen we overslaan in de query
 
     $totaalStmt = $conn->prepare("SELECT COUNT(*) AS totaal FROM voorraad" . $whereSql);
     if ($params) {
@@ -152,11 +184,13 @@
     }
     $totaalStmt->execute();
     $totaalRij = $totaalStmt->get_result()->fetch_assoc();
+    // ceil(): rondt naar boven af (bijv. 25 stukken / 12 = 3 pagina's)
     $totaalPaginas = max(1, (int) ceil($totaalRij['totaal'] / $itemsPerPagina));
     $totaalStmt->close();
 
     // Toon max 5 paginaknoppen, gecentreerd rond de huidige pagina
     $maxPaginaKnoppen = 5;
+    // intdiv(): deling zonder komma | min()/max(): houden het paginanummer binnen de grenzen
     $vanafPagina = max(1, $huidigePagina - intdiv($maxPaginaKnoppen, 2));
     $totPagina = min($totaalPaginas, $vanafPagina + $maxPaginaKnoppen - 1);
     $vanafPagina = max(1, $totPagina - $maxPaginaKnoppen + 1);
@@ -165,6 +199,7 @@
     $selectParams[] = $itemsPerPagina;
     $selectParams[] = $offset;
 
+    // Hoofd-query: haalt alleen de stukken van de huidige pagina op (LIMIT = aantal, OFFSET = startpunt)
     $stmt = $conn->prepare("SELECT id, leertype, dikteMM, lengteCM, breedteCM, gewichtG, kleur, prijs FROM voorraad" . $whereSql . " LIMIT ? OFFSET ?");
     $stmt->bind_param($types . "ii", ...$selectParams);
     $stmt->execute();
@@ -177,7 +212,7 @@
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Voorraad beheer</title>
-        <link rel="stylesheet" type="text/css" href="css/style.css">
+        <link rel="stylesheet" type="text/css" href="css/style.css?v=<?php echo filemtime(__DIR__ . '/css/style.css'); ?>">
     </head>
     <body>
 
@@ -200,6 +235,7 @@
             </div>
         </header>
 
+        <?php /* if en foreach in de HTML: tonen onderdelen alleen (if) of herhalen ze voor elk item (foreach) */ ?>
         <?php if (isset($_GET['ontvangst'])): ?>
             <div class="melding-banner">Ontvangst #<?php echo (int) $_GET['ontvangst']; ?> opgeslagen — <?php echo (int) ($_GET['aantal'] ?? 0); ?> stuk(s) toegevoegd aan de voorraad.</div>
         <?php endif; ?>
@@ -267,6 +303,7 @@
                 <?php endif; ?>
                 <div class="product-grid">
                     <?php foreach ($producten as $product): ?>
+                        <?php /* in_array(): staat dit stuk al in het mandje? Dan krijgt de kaart de class "geselecteerd" */ ?>
                         <?php $inMandje = in_array((int) $product['id'], $mandjeIds, true); ?>
                         <div class="product-card<?php echo $inMandje ? ' geselecteerd' : ''; ?>">
                             <div class="naam-box"><span>leertype</span><span><?php echo htmlspecialchars($product['leertype']); ?></span></div>

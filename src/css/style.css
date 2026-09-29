@@ -755,6 +755,49 @@ body.subpage-gecentreerd {
     flex-wrap: wrap;
 }
 
+.order-kop-acties {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+}
+
+.btn-klein {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.35rem 0.7rem;
+    border-radius: 20%;
+    border: 1px solid var(--leer-donker);
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-decoration: none;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.btn-bewerk {
+    color: var(--leer-donker);
+    background-color: #8d5438;
+    color: #fff;
+}
+
+.btn-bewerk:hover {
+    background-color: #aa6543;
+    color: #fff;
+}
+
+.btn-verwijderen {
+    color: #fff;
+    background-color: #6e412b;
+    border-color: #6e412b;
+}
+
+.btn-verwijderen:hover {
+    background-color: #8d5438;
+    border-color: #8d5438;
+}
+
 table.order-items {
     width: 100%;
     min-width: 560px;

@@ -1,6 +1,8 @@
 <?php
+    // Inlogcontrole + sessie
     require_once "partials/session_check.php";
 
+    // Alleen gebruikers met bestelrechten mogen hier komen
     if (!($_SESSION['mag_orders'] ?? false)) {
         header("Location: vooraad_beheer.php");
         exit();
@@ -8,6 +10,7 @@
 
     // Klik op "Nieuwe bestelling aanmaken": bestelmodus aan en door naar de voorraad,
     // waar je kan filteren en de gewenste stukken leer aanvinkt.
+    // $_GET: waardes uit de URL (?start_bestelling=1)
     if (isset($_GET['start_bestelling'])) {
         $_SESSION['bestel_modus'] = true;
         $_SESSION['mandje'] = [];
@@ -24,6 +27,7 @@
         $locatie = trim($_POST['locatie'] ?? '');
         $email = trim($_POST['email'] ?? '');
         $besteldatum = $_POST['besteldatum'] ?? date('Y-m-d');
+        // array_map('intval'): maakt van elk ID een getal | array_unique(): haalt dubbele weg | array_values(): nummert opnieuw
         $mandjeIds = array_values(array_unique(array_map('intval', $_SESSION['mandje'] ?? [])));
 
         if ($locatie === '' || $email === '') {
@@ -31,22 +35,25 @@
         } elseif (empty($mandjeIds)) {
             $fout = 'Je hebt nog geen stukken geselecteerd.';
         } else {
+            // array_fill + implode: maakt "?,?,?" met evenveel vraagtekens als er stukken zijn
             $placeholders = implode(',', array_fill(0, count($mandjeIds), '?'));
             $idTypes = str_repeat('i', count($mandjeIds));
 
+            // try/catch + transactie: gaat er iets mis, dan wordt alles teruggedraaid
             try {
-                $conn->begin_transaction();
+                $conn->begin_transaction(); // begin_transaction(): alle queries hieronder gelden als 1 geheel
 
                 // Prijs en beschikbaarheid altijd server-side opzoeken (en de rijen locken, zodat
                 // niemand anders tegelijk hetzelfde stuk kan bestellen).
                 $lockStmt = $conn->prepare("SELECT id, prijs FROM voorraad WHERE id IN ($placeholders) AND status = 'beschikbaar' FOR UPDATE");
-                $lockStmt->bind_param($idTypes, ...$mandjeIds);
+                $lockStmt->bind_param($idTypes, ...$mandjeIds); // "...": spreidt de array uit als losse parameters
                 $lockStmt->execute();
-                $beschikbaar = $lockStmt->get_result()->fetch_all(MYSQLI_ASSOC);
+                $beschikbaar = $lockStmt->get_result()->fetch_all(MYSQLI_ASSOC); // fetch_all(): alle rijen tegelijk als array
                 $lockStmt->close();
 
                 if (count($beschikbaar) !== count($mandjeIds)) {
-                    $conn->rollback();
+                    $conn->rollback(); // rollback(): alles ongedaan maken
+                    // array_column(): pakt alleen de kolom "id" uit de resultaten
                     $_SESSION['mandje'] = array_map('intval', array_column($beschikbaar, 'id'));
                     $fout = 'Een of meer gekozen stukken zijn niet meer beschikbaar en zijn uit je selectie gehaald. Controleer je selectie en probeer opnieuw.';
                 } else {
@@ -73,14 +80,14 @@
                     $itemStmt->close();
                     $statusStmt->close();
 
-                    $conn->commit();
-                    unset($_SESSION['bestel_modus'], $_SESSION['mandje']);
+                    $conn->commit(); // commit(): alles definitief opslaan
+                    unset($_SESSION['bestel_modus'], $_SESSION['mandje']); // unset(): verwijdert variabelen uit de sessie
                     $conn->close();
 
                     header("Location: orders.php?besteld=" . $bestellingId);
                     exit();
                 }
-            } catch (Throwable $e) {
+            } catch (Throwable $e) { // Throwable: vangt alle soorten fouten op
                 $conn->rollback();
                 error_log($e);
                 $fout = 'Opslaan mislukt, probeer het opnieuw.';
@@ -101,6 +108,7 @@
             $mandjeStmt->close();
         }
     }
+    // array_sum(): telt alle prijzen bij elkaar op
     $mandjeTotaal = array_sum(array_column($mandjeItems, 'prijs'));
 
     $bestellingenStmt = $conn->prepare("SELECT ID, locatie, email, status, besteldatum, verstuurdatum FROM bestellingen ORDER BY besteldatum DESC");
@@ -123,6 +131,7 @@
 
     // Items groeperen per bestelling, zodat we ze straks per bestelling kunnen tonen
     $itemsPerBestelling = [];
+    // Sleutel = bestelling-ID, waarde = lijst met items van die bestelling
     foreach ($alleItems as $item) {
         $itemsPerBestelling[$item['bestelling_id']][] = $item;
     }
@@ -133,7 +142,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bestellingen - Circuleather</title>
-    <link rel="stylesheet" type="text/css" href="css/style.css">
+    <link rel="stylesheet" type="text/css" href="css/style.css?v=<?php echo filemtime(__DIR__ . '/css/style.css'); ?>">
 </head>
 <body class="subpage">
     <div class="pagina-wrapper">
@@ -146,7 +155,7 @@
                 <div class="melding melding-fout"><?php echo htmlspecialchars($fout); ?></div>
             <?php endif; ?>
             <?php if (isset($_GET['besteld'])): ?>
-                <div class="melding melding-succes">Bestelling #<?php echo (int) $_GET['besteld']; ?> aangemaakt.</div>
+                <div class="melding melding-succes">Bestelling #<?php echo (int) $_GET['besteld']; /* (int): zorgt dat alleen een getal wordt getoond */ ?> aangemaakt.</div>
             <?php endif; ?>
 
             <?php if (!$bestelModus): ?>
@@ -169,7 +178,7 @@
                         </li>
                     <?php endforeach; ?>
                 </ul>
-                <p class="mandje-totaal">Totaal: &euro;<?php echo number_format((float) $mandjeTotaal, 2); ?></p>
+                <p class="mandje-totaal">Totaal: &euro;<?php echo number_format((float) $mandjeTotaal, 2); /* number_format(): toont het bedrag met 2 decimalen */ ?></p>
 
                 <form method="POST" action="">
                     <div class="formulier-header">
@@ -202,6 +211,7 @@
 
         <?php foreach ($bestellingen as $bestelling): ?>
             <?php
+                // Items van deze bestelling ophalen; "?? []" = lege lijst als er geen zijn
                 $items = $itemsPerBestelling[$bestelling['ID']] ?? [];
                 $totaal = 0;
                 foreach ($items as $item) {
@@ -211,7 +221,13 @@
             <div class="pagina-kaart order-kaart">
                 <div class="order-kop">
                     <h2>Bestelling #<?php echo (int) $bestelling['ID']; ?> &mdash; <?php echo htmlspecialchars($bestelling['locatie']); ?></h2>
-                    <span class="order-status"><?php echo htmlspecialchars($bestelling['status']); ?></span>
+                    <div class="order-kop-acties">
+                        <span class="order-status"><?php echo htmlspecialchars($bestelling['status']); ?></span>
+                        <a href="edit_bestellingen.php?id=<?php echo (int) $bestelling['ID']; ?>" class="btn-klein btn-bewerk">Bewerk</a>
+                        <?php if ($bestelling['status'] === 'verzonden'): ?>
+                            <a href="delete_bestellingen.php?id=<?php echo (int) $bestelling['ID']; ?>" class="btn-klein btn-verwijderen" onclick="return confirm('Dit verwijdert ook alle bijbehorende leerpartijen. Doorgaan?');">Verwijderen</a>
+                        <?php endif; ?>
+                    </div>
                 </div>
                 <div class="order-meta">
                     <span>Email: <?php echo htmlspecialchars($bestelling['email']); ?></span>

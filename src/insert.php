@@ -1,6 +1,8 @@
 <?php
+    // Controleert of je bent ingelogd (anders word je doorgestuurd naar login)
     require_once "partials/session_check.php";
 
+    // Geen recht om te invoeren? Terug naar de voorraad
     if (!($_SESSION['mag_insert'] ?? false)) {
         header("Location: vooraad_beheer.php");
         exit();
@@ -13,7 +15,7 @@
 
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $herkomst = trim($_POST['herkomst'] ?? '');
-        $datum = $_POST['datum'] ?? date('Y-m-d');
+        $datum = $_POST['datum'] ?? date('Y-m-d'); // date(): geeft de huidige datum in het gekozen formaat
 
         if ($herkomst === '') {
             $fout = 'Vul een herkomst in.';
@@ -21,12 +23,13 @@
             // Lege rijen (geen leertype ingevuld) worden overgeslagen, dus je hoeft niet
             // alle 5 rijen te gebruiken om meerdere stukken aan 1 ontvangst toe te voegen.
             $rijen = [];
-            $aantalPost = count($_POST['leertype'] ?? []);
+            $aantalPost = count($_POST['leertype'] ?? []); // count(): telt hoeveel rijen er zijn verstuurd
             for ($i = 0; $i < $aantalPost; $i++) {
                 $leertype = trim($_POST['leertype'][$i] ?? '');
                 if ($leertype === '') {
                     continue;
                 }
+                // (int) en (float): zetten de invoer om naar een getal, zodat er geen tekst in de database komt
                 $rijen[] = [
                     'leertype' => $leertype,
                     'dikteMM' => (int) ($_POST['dikteMM'][$i] ?? 0),
@@ -42,18 +45,21 @@
             if (empty($rijen)) {
                 $fout = 'Vul minimaal 1 stuk leer in (leertype is verplicht per rij).';
             } else {
+                // Stap 1: de ontvangst zelf opslaan
                 $ontvangstStmt = $conn->prepare("INSERT INTO Ontvangst (herkomst, datum) VALUES (?, ?)");
                 $ontvangstStmt->bind_param("ss", $herkomst, $datum);
                 $ontvangstStmt->execute();
-                $ontvangstId = $ontvangstStmt->insert_id;
+                $ontvangstId = $ontvangstStmt->insert_id; // insert_id: het nieuwe auto-increment ID van de zojuist ingevoegde rij
                 $ontvangstStmt->close();
 
+                // Stap 2: per stuk leer een rij in voorraad + een koppelrij in ontvangst_items
                 $voorraadStmt = $conn->prepare("INSERT INTO voorraad (leertype, dikteMM, lengteCM, breedteCM, gewichtG, kleur, prijs) VALUES (?, ?, ?, ?, ?, ?, ?)");
                 $itemStmt = $conn->prepare("INSERT INTO ontvangst_items (ontvangst_id, voorraad_id, gewichtG, bruikbaarheid) VALUES (?, ?, ?, ?)");
 
+                // foreach: loopt door alle ingevulde stukken heen
                 foreach ($rijen as $rij) {
                     $voorraadStmt->bind_param(
-                        "siiidsd",
+                        "siiidsd", // types per ? : s=string, i=integer, d=decimal
                         $rij['leertype'],
                         $rij['dikteMM'],
                         $rij['lengteCM'],
@@ -74,6 +80,7 @@
                 $melding = count($rijen) . ' stuk(s) toegevoegd aan de voorraad via ontvangst #' . $ontvangstId . '.';
 
                 $conn->close();
+                // Doorsturen met ID en aantal in de URL, zodat de voorraadpagina een bevestiging toont
                 header("Location: vooraad_beheer.php?ontvangst=" . $ontvangstId . "&aantal=" . count($rijen));
                 exit();
             }
@@ -87,7 +94,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ontvangst invoeren - Circuleather</title>
-    <link rel="stylesheet" type="text/css" href="css/style.css">
+    <link rel="stylesheet" type="text/css" href="css/style.css?v=<?php echo filemtime(__DIR__ . '/css/style.css'); ?>">
 </head>
 <body class="subpage">
     <div class="pagina-wrapper">
@@ -115,6 +122,7 @@
                 </div>
 
                 <div class="stuk-grid">
+                <?php /* for-lus: maakt $aantalRijen invoerblokken aan */ ?>
                 <?php for ($i = 0; $i < $aantalRijen; $i++): ?>
                     <div class="stuk-blok">
                         <h3>Stuk <?php echo $i + 1; ?></h3>
@@ -153,10 +161,11 @@
     </div>
 
     <script>
+        // JavaScript: klik op "+ Stuk toevoegen" kopieert het laatste blok en maakt de velden leeg
         document.getElementById('stuk-toevoegen').addEventListener('click', function () {
             var grid = document.querySelector('.stuk-grid');
             var blokken = grid.querySelectorAll('.stuk-blok');
-            var kloon = blokken[blokken.length - 1].cloneNode(true);
+            var kloon = blokken[blokken.length - 1].cloneNode(true); // cloneNode(true): maakt een kopie incl. alle velden
 
             kloon.querySelector('h3').textContent = 'Stuk ' + (blokken.length + 1);
             kloon.querySelectorAll('input').forEach(function (input) { input.value = ''; });
